@@ -1,2 +1,8 @@
 /* index.css */
 @import "tailwindcss";
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

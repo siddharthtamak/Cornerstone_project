@@ -1,25 +1,108 @@
+import { useState } from "react";
+
+const MAX_FILE_SIZE_MB = 100;
+const ALLOWED_TYPES = ["video/mp4", "video/webm", "video/ogg"];
+
 export default function UploadBox() {
+  const [file, setFile] = useState(null);
+  const [error, setError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileChange = (e) => {
+    const selected = e.target.files[0];
+    setError("");
+
+    if (!selected) {
+      setFile(null);
+      return;
+    }
+
+    // Type validation
+    if (!ALLOWED_TYPES.includes(selected.type)) {
+      setError("Only MP4, WebM, or OGG video files are allowed.");
+      setFile(null);
+      return;
+    }
+
+    // Size validation
+    const sizeMB = selected.size / (1024 * 1024);
+    if (sizeMB > MAX_FILE_SIZE_MB) {
+      setError("File size must be under 100MB.");
+      setFile(null);
+      return;
+    }
+
+    setFile(selected);
+  };
+
+  const handleUpload = async () => {
+    if (!file || isUploading) return;
+
+    setIsUploading(true);
+    setError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("video", file);
+
+      // 🔌 Django endpoint placeholder
+      const response = await fetch("http://localhost:8000/api/moderate/", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await response.json();
+      console.log("Backend response:", data);
+
+      // Next step: route to results page
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
-    <div className="border-2 border-dashed rounded-xl p-8 text-center hover:border-black transition">
-      <input
-        type="file"
-        accept="video/*"
-        className="hidden"
-        id="videoUpload"
-      />
+    <div className="w-full max-w-xl mx-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <h3 className="text-lg font-semibold mb-4">Upload a video</h3>
 
-      <label htmlFor="videoUpload" className="cursor-pointer">
-        <p className="text-lg font-semibold">
-          Drag & Drop your video here
-        </p>
-        <p className="text-sm text-gray-500 mt-2">
-          or click to browse (MP4, AVI, MKV)
-        </p>
+      <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-lg p-6 cursor-pointer hover:border-gray-400 transition">
+        <input
+          type="file"
+          accept="video/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
 
-        <button className="mt-4 px-6 py-2 bg-black text-white rounded-lg">
-          Upload Video
-        </button>
+        <span className="text-sm text-gray-600">
+          {file ? file.name : "Click to select a video file"}
+        </span>
+
+        <span className="text-xs text-gray-400">
+          MP4, WebM, OGG (max 100MB)
+        </span>
       </label>
+
+      {error && (
+        <p className="mt-3 text-sm text-red-600">{error}</p>
+      )}
+
+      <button
+        onClick={handleUpload}
+        disabled={!file || isUploading}
+        className={`mt-4 w-full rounded-lg px-4 py-2 font-medium text-white transition
+          ${
+            !file || isUploading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-black hover:bg-gray-900"
+          }`}
+      >
+        {isUploading ? "Analyzing video..." : "Upload & Analyze"}
+      </button>
     </div>
   );
 }
