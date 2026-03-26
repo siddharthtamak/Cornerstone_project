@@ -90,9 +90,7 @@ Cornerstone_Project/
 │   ├── src/
 │   │   ├── components/
 │   │   ├── pages/
-│   │   ├── hooks/
-│   │   ├── services/
-│   │   └── utils/
+│   │   ├── assets/
 │   │
 │   ├── public/
 │   ├── index.html
