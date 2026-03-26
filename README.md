@@ -199,32 +199,47 @@ The backend returns:
   ]
 }
 ```
+---
+
 ## 🚧 Current Limitations
-Models are not fully optimized (non-SOTA)
-Processing is slower due to segment-wise video slicing
-Audio & vision are computed per segment (expensive but accurate)
+
+- Models are not fully optimized (non-SOTA)
+- Processing is slower due to segment-wise video slicing
+- Audio & vision are computed per segment (expensive but accurate)
+
+---
 
 ## 🔮 Future Improvements
-⚡ Faster pipeline using FFmpeg instead of MoviePy
-🧠 Better aggregation (weighted pooling)
-🎯 Improved model accuracy
-🎥 Clickable timeline UI
-🌐 Scalable deployment
+
+- ⚡ Faster pipeline using FFmpeg instead of MoviePy  
+- 🧠 Better aggregation (weighted pooling)  
+- 🎯 Improved model accuracy  
+- 🎥 Clickable timeline UI  
+- 🌐 Scalable deployment  
+
+---
 
 ## 👨‍💻 Authors
-Kimono
-Kohinoor
-Durex
-Skyn
-Trojan 
+
+- Kimono  
+- Kohinoor  
+- Durex  
+- Skyn  
+- Trojan  
+
+---
 
 ## 📜 License
 
 This project is for academic/research purposes.
 
-⭐ Acknowledgements
-OpenAI Whisper
-HuggingFace Transformers
-YOLO-based vision models
-TensorFlow / PyTorch ecosystem
+---
+
+## ⭐ Acknowledgements
+
+- OpenAI Whisper  
+- HuggingFace Transformers  
+- YOLO-based vision models  
+- TensorFlow / PyTorch ecosystem  
+
 ---
