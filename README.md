@@ -222,11 +222,11 @@ The backend returns:
 
 ## 👨‍💻 Authors
 
-- Kimono  
-- Kohinoor  
-- Durex  
-- Skyn  
-- Trojan  
+- Ankur  
+- Siddharth 
+- Yuvraj  
+- Hrishav  
+- Jayesh  
 
 ---
 
