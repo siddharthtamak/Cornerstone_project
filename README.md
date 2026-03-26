@@ -50,56 +50,57 @@ Frontend aggregation & visualization
 ---
 
 ## 🧱 Project Structure
-
+```
 Cornerstone_Project/
 │
 ├── backend/
-│ ├── models/
-│ │ ├── audio/
-│ │ │ ├── audio_moderation_model.h5
-│ │ │ └── inference.py
-│ │ │
-│ │ ├── vision/
-│ │ │ ├── best_model.pth
-│ │ │ ├── inference.py
-│ │ │ └── violence_model.py
-│ │ │
-│ │ └── text/
-│ │ ├── inference.py
-│ │ └── roberta/
-│ │ ├── config.json
-│ │ ├── tokenizer.json
-│ │ ├── tokenizer_config.json
-│ │ └── model.safetensors
-│ │
-│ ├── services/
-│ │ └── pipeline.py
-│ │
-│ ├── routes/
-│ │ └── moderation.py
-│ │
-│ ├── utils/
-│ │ ├── media.py
-│ │ └── transcription.py
-│ │
-│ ├── uploads/
-│ ├── temp/
-│ └── main.py
+│   ├── models/
+│   │   ├── audio/
+│   │   │   ├── audio_moderation_model.h5
+│   │   │   └── inference.py
+│   │   │
+│   │   ├── vision/
+│   │   │   ├── best_model.pth
+│   │   │   ├── inference.py
+│   │   │   └── violence_model.py
+│   │   │
+│   │   └── text/
+│   │       ├── inference.py
+│   │       └── roberta/
+│   │           ├── config.json
+│   │           ├── tokenizer.json
+│   │           ├── tokenizer_config.json
+│   │           └── model.safetensors
+│   │
+│   ├── services/
+│   │   └── pipeline.py
+│   │
+│   ├── routes/
+│   │   └── moderation.py
+│   │
+│   ├── utils/
+│   │   ├── media.py
+│   │   └── transcription.py
+│   │
+│   ├── uploads/
+│   ├── temp/
+│   └── main.py
 │
 ├── frontend/
-│ ├── src/
-│ │ ├── components/
-│ │ ├── pages/
-│ │ ├── hooks/
-│ │ ├── services/
-│ │ └── utils/
-│ │
-│ ├── public/
-│ ├── index.html
-│ ├── package.json
-│ └── vite.config.js
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   └── utils/
+│   │
+│   ├── public/
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js
 │
 └── README.md
+```
 
 
 ---
