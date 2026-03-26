@@ -149,8 +149,9 @@ Frontend will run at:
 ```bash
 http://localhost:5173
 ```
+---
 
-📦 Model Download (IMPORTANT)
+## 📦 Model Download (IMPORTANT)
 
 Due to size constraints, model files are not included in the repository.
 
@@ -158,8 +159,8 @@ Due to size constraints, model files are not included in the repository.
 
 📁 After Download, Place Files Like This:
 
+```
 backend/models/
-
 ├── audio/
 │   └── audio\_moderation\_model.h5
 │
@@ -172,9 +173,10 @@ backend/models/
         ├── tokenizer.json
         ├── tokenizer\_config.json
         └── model.safetensors
-
-📊 Output Format
-
+```
+---
+## 📊 Output Format
+```
 The backend returns:
 {
   "verdict": "violence",
@@ -193,21 +195,27 @@ The backend returns:
     }
   ]
 }
-
-🚧 Current Limitations
+```
+## 🚧 Current Limitations
 Models are not fully optimized (non-SOTA)
 Processing is slower due to segment-wise video slicing
 Audio & vision are computed per segment (expensive but accurate)
-🔮 Future Improvements
+
+## 🔮 Future Improvements
 ⚡ Faster pipeline using FFmpeg instead of MoviePy
 🧠 Better aggregation (weighted pooling)
 🎯 Improved model accuracy
 🎥 Clickable timeline UI
 🌐 Scalable deployment
-👨‍💻 Authors
-Siddharth Tamak
-Team Members (add names)
-📜 License
+
+## 👨‍💻 Authors
+Kimono
+Kohinoor
+Durex
+Skyn
+Trojan 
+
+## 📜 License
 
 This project is for academic/research purposes.
 
@@ -216,29 +224,4 @@ OpenAI Whisper
 HuggingFace Transformers
 YOLO-based vision models
 TensorFlow / PyTorch ecosystem
-
-
 ---
-
-# 🚀 What You Should Do Next
-
-1. Paste this into `README.md`
-2. Replace:
-   - `YOUR_USERNAME`
-   - `YOUR_REPO`
-   - Google Drive link
-3. Add team members
-
----
-
-# 🔥 This README Will Help You
-
-- Look **professional**
-- Make your repo understandable
-- Help evaluators quickly grasp your system
-- Stand out from typical student projects
-
----
-
-If you want next:
-👉 I can also help you create a **clean GitHub repo structure + .gitignore (important for venv + models)**
