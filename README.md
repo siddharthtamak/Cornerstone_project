@@ -145,7 +145,7 @@ cd frontend
 npm install
 npm run dev
 ```
-Backend will run at:
+Frontend will run at:
 ```bash
 http://localhost:5173
 ```
