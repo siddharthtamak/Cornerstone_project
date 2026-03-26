@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.env/
+
+# Models (VERY IMPORTANT)
+backend/models/audio/*.h5
+backend/models/vision/*.pth
+backend/models/text/roberta/*
+
+# Temp & uploads
+backend/temp/
+backend/uploads/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Environment variables
+.env

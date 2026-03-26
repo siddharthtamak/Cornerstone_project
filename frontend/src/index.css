@@ -1,0 +1,11 @@
+/* index.css */
+
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
