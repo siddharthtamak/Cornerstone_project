@@ -29,23 +29,24 @@ It combines deep learning models across multiple modalities and produces:
 
 ### Pipeline Overview
 
-- Video
-  ↓
-- Audio Extraction
-  ↓
-- Transcription (Whisper)
-  ↓
-- Segment Generation (with gap filling)
-  ↓
-- For each segment:
-  - Text Model (RoBERTa)
-  - Audio Model (CNN)
-  - Vision Model (YOLO + CNN)
-  ↓
-- Segment-wise results
-  ↓
-- Frontend aggregation & visualization
-
+```
+Video
+↓
+Audio Extraction
+↓
+Transcription (Whisper)
+↓
+Segment Generation (with gap filling)
+↓
+For each segment:
+  → Text Model (RoBERTa)
+  → Audio Model (CNN)
+  → Vision Model (YOLO + CNN)
+↓
+Segment-wise results
+↓
+Frontend aggregation & visualization
+```
 ---
 
 ## 🧱 Project Structure
