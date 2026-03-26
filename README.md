@@ -151,27 +151,30 @@ http://localhost:5173
 ```
 ---
 
-## 📦 Model Download (IMPORTANT)
+# 📦 Model Download (IMPORTANT)
 
 Due to size constraints, model files are not included in the repository.
 
 👉 Download all models from the link below:
 
-📁 After Download, Place Files Like This:
+🔗 **[Download Models Here](PASTE_YOUR_GOOGLE_DRIVE_LINK_HERE)**
+
+
+## 📁 After Download, Place Files Like This:
 
 ```
 backend/models/
 ├── audio/
-│   └── audio\_moderation\_model.h5
+│   └── audio_moderation_model.h5
 │
 ├── vision/
-│   └── best\_model.pth
+│   └── best_model.pth
 │
 └── text/
     └── roberta/
         ├── config.json
         ├── tokenizer.json
-        ├── tokenizer\_config.json
+        ├── tokenizer_config.json
         └── model.safetensors
 ```
 ---
