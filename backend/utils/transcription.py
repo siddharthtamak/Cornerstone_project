@@ -31,6 +31,11 @@ def transcribe_audio(audio_path: str):
     try:
         result = model.transcribe(audio_path)
         raw_segments = result.get("segments", [])
+        total_duration = result.get("duration", 0)
+
+        if not raw_segments:
+            print("Whisper returned no segments; using fallback chunking")
+            return create_fixed_segments(total_duration)
 
         if not raw_segments:
             return []
@@ -136,3 +141,23 @@ def fill_gaps(segments, total_duration):
         })
 
     return filled
+
+def create_fixed_segments(total_duration, chunk_size=7.0):
+    """
+    Create fixed-length segments when Whisper fails
+    """
+    segments = []
+    start = 0.0
+
+    while start < total_duration:
+        end = min(start + chunk_size, total_duration)
+
+        segments.append({
+            "start": start,
+            "end": end,
+            "text": ""  # no speech
+        })
+
+        start = end
+
+    return segments
