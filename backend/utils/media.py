@@ -32,3 +32,7 @@ def extract_audio_from_video(video_path: str, audio_path: str):
     except Exception as e:
         print(f"❌ Audio extraction error: {e}")
         return None
+
+def get_video_duration(video_path):
+    with VideoFileClip(video_path) as clip:
+        return clip.duration
