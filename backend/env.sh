@@ -58,6 +58,8 @@ pip install librosa moviepy opencv-python
 
 pip install python-multipart
 
+pip install tim
+
 echo "🎉 Setup complete!"
 
 echo "👉 To activate later: source venv/bin/activate"
