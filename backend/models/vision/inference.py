@@ -1,10 +1,11 @@
 import os
 import torch
 
-# Import your existing pipeline
-from models.vision.violence_model import ViolenceDetectionModel
-from models.vision.inference_pipeline import VideoViolenceInference
-# (we'll fix this import below depending on your file naming)
+# import new model logic
+from models.vision.video_model import (
+    InferConfig,
+    classify_video_clips
+)
 
 # ==============================
 # CONFIG
@@ -12,59 +13,61 @@ from models.vision.inference_pipeline import VideoViolenceInference
 
 CLASSES = ["neutral", "sexual_content", "violence", "hate_speech"]
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "best_model.pth")
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+BASE_DIR = os.path.dirname(__file__)
+MODEL_PATH = os.path.join(BASE_DIR, "best_model.pt")
 
 # ==============================
-# LOAD MODEL (GLOBAL)
+# LOAD CONFIG
 # ==============================
 
 print("🎥 Loading Vision Model...")
 
-if os.path.exists(MODEL_PATH):
-    try:
-        vision_pipeline = VideoViolenceInference(
-            classifier_path=MODEL_PATH,
-            device=device
-        )
-        print("✅ Vision model loaded")
-    except Exception as e:
-        print(f"❌ Vision model load error: {e}")
-        vision_pipeline = None
-else:
-    print(f"⚠️ Vision model not found at {MODEL_PATH}")
-    vision_pipeline = None
+try:
+    cfg = InferConfig(checkpoint=MODEL_PATH)
+    print("✅ Vision model ready")
+except Exception as e:
+    print(f"❌ Vision model load error: {e}")
+    cfg = None
 
 
 # ==============================
-# VISION INFERENCE FUNCTION
+# PROBABILITY MAPPING
+# ==============================
+
+def map_to_distribution(p_n, p_v):
+    """
+    Convert Bernoulli outputs → proper distribution
+    """
+
+    sexual_content = p_n
+    violence = p_v
+
+    neutral = (1 - p_n) * (1 - p_v)
+
+    return {
+        "neutral": float(neutral),
+        "sexual_content": float(sexual_content),
+        "violence": float(violence),
+        "hate_speech": 0.0
+    }
+
+
+# ==============================
+# MAIN FUNCTION
 # ==============================
 
 def predict_vision(video_path: str):
-    """
-    Runs violence detection on video.
-    Maps result to 4-class output format.
-    """
 
-    if vision_pipeline is None:
+    if cfg is None:
         return {c: 0.0 for c in CLASSES}
 
     try:
-        result = vision_pipeline.process_video(video_path)
+        result = classify_video_clips(video_path, cfg)
 
-        if "classification" not in result:
-            return {c: 0.0 for c in CLASSES}
+        p_n = result.get("nudity_prob", 0.0)
+        p_v = result.get("violence_prob", 0.0)
 
-        violence_prob = result["classification"]["violence_prob"]
-        neutral_prob = 1.0 - violence_prob
-
-        return {
-            "neutral": float(neutral_prob),
-            "sexual_content": 0.0,
-            "violence": float(violence_prob),
-            "hate_speech": 0.0
-        }
+        return map_to_distribution(p_n, p_v)
 
     except Exception as e:
         print(f"❌ Vision inference error: {e}")
