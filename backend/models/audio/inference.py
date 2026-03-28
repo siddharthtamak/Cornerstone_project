@@ -1,7 +1,8 @@
 import os
 import numpy as np
-import librosa
 import tensorflow as tf
+from scipy.io import wavfile
+import scipy.signal
 
 # ==============================
 # CONFIG
@@ -10,73 +11,152 @@ import tensorflow as tf
 CLASSES = ["neutral", "sexual_content", "violence", "hate_speech"]
 
 SAMPLE_RATE = 22050
-DURATION = 6
+DURATION = 5
 N_MELS = 128
-TARGET_FRAMES = 130
+INPUT_FRAMES = 212  # matches training
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "audio_moderation_model.h5")
+BASE_DIR = os.path.dirname(__file__)
+MODEL_PATH = os.path.join(BASE_DIR, "audio_moderation_model.h5")
 
 # ==============================
-# LOAD MODEL (GLOBAL - LOAD ONCE)
+# LOAD MODEL (GLOBAL)
 # ==============================
 
 print("🔊 Loading Audio Model...")
 
 if os.path.exists(MODEL_PATH):
-    audio_model = tf.keras.models.load_model(MODEL_PATH)
-    print("✅ Audio model loaded")
+    try:
+        audio_model = tf.keras.models.load_model(MODEL_PATH)
+        print("✅ Audio model loaded")
+    except Exception as e:
+        print(f"❌ Error loading audio model: {e}")
+        audio_model = None
 else:
     print(f"⚠️ Audio model not found at {MODEL_PATH}")
     audio_model = None
 
 
 # ==============================
-# AUDIO INFERENCE FUNCTION
+# FEATURE EXTRACTION
+# ==============================
+
+def extract_features(file_path: str):
+    """
+    Convert audio file → log-mel spectrogram (same as training)
+    """
+
+    try:
+        # 1. Load audio using SciPy
+        sr, audio = wavfile.read(file_path)
+
+        # 2. Normalize
+        if audio.dtype == np.int16:
+            audio = audio.astype(np.float32) / 32768.0
+        elif audio.dtype == np.int32:
+            audio = audio.astype(np.float32) / 2147483648.0
+        else:
+            audio = audio.astype(np.float32)
+
+        if np.max(np.abs(audio)) > 0:
+            audio = audio / np.max(np.abs(audio))
+
+        # 3. Convert stereo → mono
+        if len(audio.shape) > 1:
+            audio = np.mean(audio, axis=1)
+
+        # 4. Resample if needed
+        if sr != SAMPLE_RATE:
+            num_samples = int(len(audio) * float(SAMPLE_RATE) / sr)
+            audio = scipy.signal.resample(audio, num_samples)
+
+        # 5. Convert to tensor
+        audio_tensor = tf.convert_to_tensor(audio, dtype=tf.float32)
+
+        # 6. Pad / truncate
+        target_len = SAMPLE_RATE * DURATION
+        audio_len = tf.shape(audio_tensor)[0]
+
+        def pad():
+            return tf.pad(audio_tensor, [[0, target_len - audio_len]])
+
+        def clip():
+            return audio_tensor[:target_len]
+
+        audio_tensor = tf.cond(audio_len < target_len, pad, clip)
+
+        # 7. STFT
+        stft = tf.signal.stft(
+            audio_tensor,
+            frame_length=2048,
+            frame_step=512,
+            window_fn=tf.signal.hann_window
+        )
+
+        spectrogram = tf.abs(stft)
+
+        # 8. Mel conversion
+        num_spectrogram_bins = tf.shape(spectrogram)[-1]
+
+        mel_weight = tf.signal.linear_to_mel_weight_matrix(
+            num_mel_bins=N_MELS,
+            num_spectrogram_bins=num_spectrogram_bins,
+            sample_rate=SAMPLE_RATE,
+            lower_edge_hertz=0.0,
+            upper_edge_hertz=8000.0
+        )
+
+        mel_spectrogram = tf.matmul(spectrogram, mel_weight)
+        log_mel = tf.math.log(mel_spectrogram + 1e-6)
+
+        # 9. Transpose to (mel, time)
+        log_mel = tf.transpose(log_mel)
+
+        # 10. Add channel dimension
+        features = log_mel[..., tf.newaxis]
+
+        # 11. Resize to expected input shape
+        if features.shape[1] != INPUT_FRAMES:
+            features = tf.image.resize(features, (N_MELS, INPUT_FRAMES))
+
+        return features.numpy()
+
+    except Exception as e:
+        print(f"❌ Feature extraction error: {e}")
+        return None
+
+
+# ==============================
+# INFERENCE FUNCTION
 # ==============================
 
 def predict_audio(audio_path: str):
     """
-    Run audio moderation model on extracted audio file.
-    Returns probability scores for each class.
+    Main function used by pipeline
+    Returns:
+        {
+            "neutral": float,
+            "sexual_content": float,
+            "violence": float,
+            "hate_speech": float
+        }
     """
 
     if audio_model is None:
         return {c: 0.0 for c in CLASSES}
 
     try:
-        # 1. Load audio
-        audio, _ = librosa.load(audio_path, sr=SAMPLE_RATE, duration=DURATION)
+        features = extract_features(audio_path)
 
-        # 2. Pad / truncate
-        target_len = SAMPLE_RATE * DURATION
-        if len(audio) < target_len:
-            audio = np.pad(audio, (0, target_len - len(audio)))
-        else:
-            audio = audio[:target_len]
+        if features is None:
+            return {c: 0.0 for c in CLASSES}
 
-        # 3. Mel spectrogram
-        mel_spec = librosa.feature.melspectrogram(
-            y=audio,
-            sr=SAMPLE_RATE,
-            n_mels=N_MELS
-        )
+        # Add batch dimension
+        input_data = np.expand_dims(features, axis=0)
 
-        mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
-
-        # 4. Add channel dimension
-        data = np.expand_dims(mel_spec_db, axis=-1)
-
-        # 5. Resize to match training shape
-        if data.shape[1] != TARGET_FRAMES:
-            data = tf.image.resize(data, (N_MELS, TARGET_FRAMES)).numpy()
-
-        # 6. Add batch dimension
-        input_data = np.expand_dims(data, axis=0)
-
-        # 7. Predict
+        # Predict
         preds = audio_model.predict(input_data, verbose=0)[0]
 
-        # 8. Map outputs
+        # Map outputs (IMPORTANT: same as training mapping)
         return {
             "neutral": float(preds[3]),
             "sexual_content": float(preds[0]),
