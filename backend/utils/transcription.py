@@ -1,5 +1,8 @@
 import whisper
+import subprocess
+import json
 
+# ==============================
 # LOAD MODEL
 # ==============================
 
@@ -18,28 +21,32 @@ except Exception as e:
 # ==============================
 
 def transcribe_audio(audio_path: str):
-    """
-    Returns FULL coverage segments:
-    [
-      { start, end, text }
-    ]
-    """
 
     if model is None:
         return []
 
     try:
-        result = model.transcribe(audio_path)
-        raw_segments = result.get("segments", [])
-        total_duration = result.get("duration", 0)
+        result = model.transcribe(
+            audio_path,
+            task="transcribe",
+            language=None
+        )
 
+        raw_segments = result.get("segments", [])
+
+        # 🔥 ALWAYS use real duration
+        total_duration = get_audio_duration(audio_path)
+
+        # ======================
+        # FALLBACK
+        # ======================
         if not raw_segments:
-            print("Whisper returned no segments; using fallback chunking")
+            print("⚠️ Whisper returned no segments → fallback chunking")
             return create_fixed_segments(total_duration)
 
-        if not raw_segments:
-            return []
-
+        # ======================
+        # FORMAT
+        # ======================
         segments = [
             {
                 "start": float(seg["start"]),
@@ -49,12 +56,20 @@ def transcribe_audio(audio_path: str):
             for seg in raw_segments
         ]
 
-        # 🔥 Merge short segments (optional but useful)
+        # ======================
+        # MERGE SMALL SEGMENTS
+        # ======================
         segments = merge_short_segments(segments)
 
-        # 🔥 Fill silent gaps
-        total_duration = result.get("duration", segments[-1]["end"])
+        # ======================
+        # GAP FILLING
+        # ======================
         segments = fill_gaps(segments, total_duration)
+
+        # ======================
+        # 🔥 FINAL SAFETY CLAMP
+        # ======================
+        segments = clamp_segments(segments, total_duration)
 
         return segments
 
@@ -66,11 +81,8 @@ def transcribe_audio(audio_path: str):
 # ==============================
 # MERGE SHORT SEGMENTS
 # ==============================
+
 def merge_short_segments(segments, min_duration=5.0):
-    """
-    Merge small segments forward to ensure minimum duration.
-    No overlapping segments.
-    """
 
     if not segments:
         return []
@@ -87,7 +99,6 @@ def merge_short_segments(segments, min_duration=5.0):
 
         duration = end - start
 
-        # 🔥 If too small → merge forward
         while duration < min_duration and i + 1 < len(segments):
             i += 1
             next_seg = segments[i]
@@ -106,11 +117,13 @@ def merge_short_segments(segments, min_duration=5.0):
 
     return merged
 
+
 # ==============================
-# 🔥 GAP FILLING (CORE FEATURE)
+# GAP FILLING
 # ==============================
 
 def fill_gaps(segments, total_duration):
+
     if not segments:
         return []
 
@@ -121,18 +134,16 @@ def fill_gaps(segments, total_duration):
         start = seg["start"]
         end = seg["end"]
 
-        # 🔥 gap before segment
         if start > prev_end:
             filled.append({
                 "start": prev_end,
                 "end": start,
-                "text": ""  # silent segment
+                "text": ""
             })
 
         filled.append(seg)
         prev_end = end
 
-    # 🔥 tail gap
     if prev_end < total_duration:
         filled.append({
             "start": prev_end,
@@ -142,10 +153,17 @@ def fill_gaps(segments, total_duration):
 
     return filled
 
+
+# ==============================
+# FALLBACK SEGMENTS
+# ==============================
+
 def create_fixed_segments(total_duration, chunk_size=7.0):
-    """
-    Create fixed-length segments when Whisper fails
-    """
+
+    # 🔥 safety fallback
+    if total_duration <= 0:
+        total_duration = 30.0  # assume 30s if unknown
+
     segments = []
     start = 0.0
 
@@ -155,9 +173,69 @@ def create_fixed_segments(total_duration, chunk_size=7.0):
         segments.append({
             "start": start,
             "end": end,
-            "text": ""  # no speech
+            "text": ""
         })
 
         start = end
 
     return segments
+
+
+# ==============================
+# 🔥 FINAL CLAMP (CRITICAL)
+# ==============================
+
+def clamp_segments(segments, total_duration):
+
+    fixed = []
+
+    for seg in segments:
+        start = max(0.0, seg["start"])
+        end = min(seg["end"], total_duration)
+
+        if end <= start:
+            continue
+
+        fixed.append({
+            "start": start,
+            "end": end,
+            "text": seg["text"]
+        })
+
+    return fixed
+
+
+# ==============================
+# AUDIO DURATION
+# ==============================
+
+def get_audio_duration(audio_path):
+
+    try:
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "json",
+            audio_path
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        data = json.loads(result.stdout)
+
+        duration = float(data["format"]["duration"])
+
+        if duration <= 0:
+            raise Exception("Invalid duration")
+
+        return duration
+
+    except Exception as e:
+        print(f"⚠️ ffprobe failed: {e}")
+
+        # 🔥 fallback to Whisper estimate
+        try:
+            result = model.transcribe(audio_path)
+            return result.get("duration", 30.0)
+        except:
+            return 30.0

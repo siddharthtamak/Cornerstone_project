@@ -15,7 +15,7 @@ TEMP_DIR = "temp"
 
 
 # ==============================
-# 🔥 CLAMP SEGMENTS
+# CLAMP SEGMENTS
 # ==============================
 
 def clamp_segments(segments, video_duration):
@@ -38,7 +38,7 @@ def clamp_segments(segments, video_duration):
 
 
 # ==============================
-# 🔥 FALLBACK SEGMENTS (IF EMPTY)
+# FALLBACK SEGMENTS
 # ==============================
 
 def create_fallback_segments(video_duration, chunk_size=7.0):
@@ -60,6 +60,68 @@ def create_fallback_segments(video_duration, chunk_size=7.0):
 
 
 # ==============================
+# TEXT AGGREGATION
+# ==============================
+
+def aggregate_text_segments(segment_results, full_transcript=""):
+
+    if not segment_results:
+        return {
+            "neutral": 1.0,
+            "sexual_content": 0.0,
+            "violence": 0.0,
+            "hate_speech": 0.0
+        }
+
+    n = len(segment_results)
+
+    avg = {k: 0.0 for k in ["neutral", "sexual_content", "violence", "hate_speech"]}
+
+    for seg in segment_results:
+        t = seg["modalities"]["text"]
+        for k in avg:
+            avg[k] += t.get(k, 0.0) / n
+
+    # Density
+    strong_counts = {k: 0 for k in avg}
+
+    for seg in segment_results:
+        t = seg["modalities"]["text"]
+        label = max(t, key=t.get)
+
+        if t[label] > 0.6:
+            strong_counts[label] += 1
+
+    for k in avg:
+        avg[k] += 0.2 * (strong_counts[k] / n)
+
+    text = full_transcript.lower()
+
+    if any(w in text for w in ["kill", "murder", "shoot"]):
+        avg["violence"] += 0.3
+
+    if any(w in text for w in ["sex", "nude", "porn"]):
+        avg["sexual_content"] += 0.3
+
+    if any(w in text for w in ["hate", "racist"]):
+        avg["hate_speech"] += 0.3
+
+    if any(w in text for w in ["game", "player", "level", "mission", "weapon"]):
+        avg["violence"] *= 0.6
+
+    if any(w in text for w in ["lyrics", "song", "music"]):
+        avg["sexual_content"] *= 0.7
+        avg["violence"] *= 0.7
+
+    total = sum(avg.values())
+    if total > 0:
+        for k in avg:
+            avg[k] /= total
+
+    return avg
+
+
+# ==============================
 # MAIN PIPELINE
 # ==============================
 
@@ -69,50 +131,36 @@ def process_video(video_path: str):
     audio_path = os.path.join(TEMP_DIR, f"{base_name}.wav")
 
     try:
+        video_duration = get_video_duration(video_path)
+
         # ======================
-        # 1. EXTRACT FULL AUDIO
+        # 1. AUDIO HANDLING
         # ======================
         audio_file = extract_audio_from_video(video_path, audio_path)
 
         if audio_file is None:
-            return {
-                "verdict": "neutral",
-                "confidence": 1.0,
-                "segments": [],
-                "transcript": "",
-                "modalities": {}
-            }
+            print("⚠️ No audio → fallback segmentation")
+            segments = create_fallback_segments(video_duration)
+            has_audio = False
+        else:
+            segments = transcribe_audio(audio_file)
+            has_audio = True
 
-        # ======================
-        # 2. GET VIDEO DURATION
-        # ======================
-        video_duration = get_video_duration(video_path)
-
-        # ======================
-        # 3. TRANSCRIPTION
-        # ======================
-        segments = transcribe_audio(audio_file)
-
-        # 🔥 fallback if whisper failed
         if not segments:
-            print("⚠️ No segments from Whisper → using fallback")
             segments = create_fallback_segments(video_duration)
 
-        # 🔥 clamp timestamps
         segments = clamp_segments(segments, video_duration)
 
         segment_results = []
         full_transcript = []
 
         # ======================
-        # 4. LOAD VIDEO ONCE
+        # 2. LOAD VIDEO
         # ======================
         video = VideoFileClip(video_path)
 
         for seg in segments:
-            start = seg["start"]
-            end = seg["end"]
-            text = seg["text"]
+            start, end, text = seg["start"], seg["end"], seg["text"]
 
             full_transcript.append(text)
 
@@ -121,15 +169,9 @@ def process_video(video_path: str):
             seg_video_path = os.path.join(TEMP_DIR, f"{seg_id}.mp4")
 
             try:
-                # ======================
-                # SAFETY CHECK
-                # ======================
                 if end <= start:
                     continue
 
-                # ======================
-                # CUT VIDEO
-                # ======================
                 subclip = video.subclip(start, end)
 
                 subclip.write_videofile(
@@ -140,20 +182,23 @@ def process_video(video_path: str):
                     logger=None
                 )
 
-                # ======================
-                # CUT AUDIO
-                # ======================
-                subclip.audio.write_audiofile(
-                    seg_audio_path,
-                    codec="pcm_s16le",
-                    logger=None
-                )
+                # 🔥 AUDIO ONLY IF EXISTS
+                if has_audio and subclip.audio is not None:
+                    subclip.audio.write_audiofile(
+                        seg_audio_path,
+                        codec="pcm_s16le",
+                        logger=None
+                    )
+                    audio_scores = predict_audio(seg_audio_path)
+                else:
+                    audio_scores = {
+                        "neutral": 1.0,
+                        "sexual_content": 0.0,
+                        "violence": 0.0,
+                        "hate_speech": 0.0
+                    }
 
-                # ======================
-                # RUN MODELS
-                # ======================
-                text_scores = predict_text(text)
-                audio_scores = predict_audio(seg_audio_path)
+                text_scores = predict_text(text, seg_video_path)
                 vision_scores = predict_vision(seg_video_path)
 
                 segment_results.append({
@@ -171,7 +216,6 @@ def process_video(video_path: str):
                 print(f"❌ Segment error ({start}-{end}): {e}")
 
             finally:
-                # CLEAN TEMP FILES
                 if os.path.exists(seg_audio_path):
                     os.remove(seg_audio_path)
                 if os.path.exists(seg_video_path):
@@ -181,14 +225,21 @@ def process_video(video_path: str):
         gc.collect()
 
         # ======================
-        # FINAL RESPONSE
+        # FINAL OUTPUT
         # ======================
+        text_modality = aggregate_text_segments(
+            segment_results,
+            full_transcript=" ".join(full_transcript)
+        )
+
         return {
             "verdict": "frontend_computed",
             "confidence": 0.0,
             "segments": segment_results,
             "transcript": " ".join(full_transcript).strip(),
-            "modalities": {}
+            "modalities": {
+                "text": text_modality
+            }
         }
 
     except Exception as e:

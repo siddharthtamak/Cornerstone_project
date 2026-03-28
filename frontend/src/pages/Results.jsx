@@ -151,7 +151,7 @@ export default function Results() {
   };
 
   const modalities = {
-    text: averageScores(segments, "text") || {},
+    text: data?.modalities?.text || {},
     audio: averageScores(segments, "audio") || {},
     vision: averageScores(segments, "vision") || {},
   };
