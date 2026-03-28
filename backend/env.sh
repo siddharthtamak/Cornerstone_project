@@ -60,6 +60,12 @@ pip install python-multipart
 
 pip install tim
 
+pip install langdetect
+
+pip install sentencepiece
+
+pip install easyocr
+
 echo "🎉 Setup complete!"
 
 echo "👉 To activate later: source venv/bin/activate"
