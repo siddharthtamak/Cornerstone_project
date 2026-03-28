@@ -60,9 +60,9 @@ Cornerstone_Project/
 │   │   │   └── inference.py
 │   │   │
 │   │   ├── vision/
-│   │   │   ├── best_model.pth
+│   │   │   ├── best_model.pt
 │   │   │   ├── inference.py
-│   │   │   └── violence_model.py
+│   │   │   └── video_model.py
 │   │   │
 │   │   └── text/
 │   │       ├── inference.py

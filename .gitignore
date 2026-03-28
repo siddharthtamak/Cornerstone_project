@@ -11,6 +11,7 @@ venv/
 # Models (VERY IMPORTANT)
 backend/models/audio/*.h5
 backend/models/vision/*.pth
+backend/models/vision/*.pt
 backend/models/text/roberta/*
 
 # Temp & uploads
